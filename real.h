@@ -3,6 +3,9 @@
 
 #define DEFAULT_LENGTH 500;
 
+// 0 = Sequential
+// 1 = Data parallelism
+// 2 = Tasks bag
 int parallelismType;
 int length;
 
@@ -10,6 +13,20 @@ int length;
 // Else :  -1 = no test, 0 = all tests.
 int testsExecuted;
 
-void initialize(int values[3]);
+typedef struct {
+	int* figures;
+	int length;
+	int exponent;
+} real;
+
+real nan;
+
+void parseOptions(int argc, char *argv[]);
+real realFromString(char* number);
+int intFromChar(char c);
+real sequentialMultiplication(real first, real second);
+int coefficient(int index, real first, real second);
+real normalize(real myReal);
+
 
 #endif
