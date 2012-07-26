@@ -1,16 +1,16 @@
 #!/bin/bash
 
-# Pour activer le deamon mpd, si pas actif.
+# Activates the mpd deamon if not active.
 
 if [ $# == 0 ]; then
     echo "usage:"
-    echo "  activer-mpdboot.sh nbNoeuds listeMachines [num]"
+    echo "  activate-mpdboot.sh numberOfNodes machinesList [number]"
     exit -1
 fi
 
 MPDTRACE=mpdtrace
-NB_NOEUDS=$1
-LES_NOEUDS=~/$2
+NB_NODES=$1
+NODES=~/$2
 
 if [ $# == 2 ]; then
     QUEL=""
@@ -20,12 +20,12 @@ fi
 
 statut=$( $MPDTRACE >/dev/null; echo $?)
 if [ $statut != 0 ]; then
-    if [ $NB_NOEUDS == 1 ]; then
-	echo "*** On active mpdboot avec un seul processeur"
+    if [ $NB_NODES == 1 ]; then
+	echo "*** Activation of mpdboot with one processor."
     else
-	echo "*** On active mpdboot avec $NB_NOEUDS processeurs"
+	echo "*** Activation of mdpboot with $NB_NODES processors."
     fi
-    #echo "mpdboot -n $NB_NOEUDS -f $LES_NOEUDS"
-    mpdboot -n $NB_NOEUDS -f $LES_NOEUDS
+    #echo "mpdboot -n $NB_NODES -f $NODES"
+    mpdboot -n $NB_NODES -f $NODES
     touch .mpdboot$QUEL
 fi

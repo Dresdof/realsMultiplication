@@ -9,24 +9,37 @@
 
 void parseOptions(int argc, char *argv[]) {
 
-	// Generic char intended to get the getopt return value;
+	// Generic char intended to get the getopt return value.
 	char c;
 	opterr = 0;
 
-	while ((c = getopt (argc, argv, "p:l:t:")) != -1) {
+	// Set default values.
+	verbose = 0;
+	first = "0E+0";
+	second = "0E+0";
+
+	while ((c = getopt (argc, argv, "p:t:f:s:v")) != -1) {
 		switch (c) {
 			case 'p':
 				parallelismType = atoi(optarg);
 				break;
-			case 'l':
-				length = atoi(optarg);
-				break;
 			case 't':
-				testsExecuted = atoi(optarg);
+				tests = atoi(optarg);
+				break;
+			case 'f':
+				first = optarg;
+			case 's':
+				second = optarg;
+			case 'v':
+				verbose = 1;
 				break;
 
 			case '?':
-				if (optopt == 'p' || optopt == 't' || optopt == 'l')
+				if (optopt == 'p' 
+						|| optopt == 't' 
+						|| optopt == 'v' 
+						|| optopt == 'v' 
+						|| optopt == 'v')
 					printf ("Option -%c requires an argument.\n", optopt);
 				else if (isprint (optopt))
 					printf ("Unknown option `-%c'.\n", optopt);
@@ -42,13 +55,26 @@ void parseOptions(int argc, char *argv[]) {
 	if (parallelismType < 0 || parallelismType > 2) 
 		parallelismType = 0;
 
-	if (length < 0) 
-		length = DEFAULT_LENGTH;
-
 	nan.figures = malloc(sizeof(int));
 	if(nan.figures == NULL) exit(1);
 	nan.length = 1;
 	nan.exponent = -1;
+}
+
+real process(real first, real second) {
+	switch(parallelismType) {
+		case 0:
+			return normalize(sequentialMultiplication(first, second));
+			break;
+
+		case 1:
+			return normalize(dataParallelMultiplication(first, second));
+			break;
+
+		case 2:
+			return normalize(tasksBagParallelMultiplication(first, second));
+			break;
+	}
 }
 
 int charToInt(char c) {
@@ -196,10 +222,12 @@ real normalize(real myReal) {
 
 	int firstNonZero = 0;
 
-	while (firstNonZero < normalizedReal.length && normalizedReal.figures[firstNonZero] == 0)
+	while (firstNonZero < normalizedReal.length 
+			&& normalizedReal.figures[firstNonZero] == 0)
 		firstNonZero++;
 
-	firstNonZero = firstNonZero < normalizedReal.length ? firstNonZero : normalizedReal.length;
+	firstNonZero = firstNonZero < normalizedReal.length ? 
+		firstNonZero : normalizedReal.length;
 
 	if (firstNonZero > 0) {
 		int* array = malloc ( (normalizedReal.length - firstNonZero + 1) * sizeof(int));
@@ -218,3 +246,18 @@ real normalize(real myReal) {
 	return normalizedReal;
 }
 
+real dataParallelMultiplication(real first, real second) {
+	real result;
+	if(verbose)
+		printf("Data parallelism.\n");
+
+	return result;
+}
+
+real tasksBagParallelMultiplication(real first, real second) {
+	real result;
+	if(verbose)
+		printf("Bag of tasks parallelism.\n");
+
+	return result;
+}
