@@ -247,17 +247,80 @@ real normalize(real myReal) {
 }
 
 real dataParallelMultiplication(real first, real second) {
-	real result;
-	if(verbose)
-		printf("Data parallelism.\n");
 
-	return result;
+	int nProcessors, processorId;
+
+	MPI_Comm_rank (MPI_COMM_WORLD, &processorId);
+	MPI_Comm_size (MPI_COMM_WORLD, & nProcessors);
+
+	real result;
+	result.length = first.length + second.length - 1;
+	int baseLength = result.length / nProcessors;
+	int myLength = baseLength;
+
+	if (processorId == nProcessors - 1)
+		myLength += result.length % nProcessors;
+
+	int* portion = malloc(myLength * sizeof(int));
+
+	int i;
+	for (i = 0; i < myLength; i++) {
+		int position = processorId * baseLength + i;
+		portion[i] = coefficient(position, first, second);
+	}
+
+	if (processorId == 0) {
+
+		if(verbose)
+			printf("Data parallelism.\n");
+
+		result.figures = malloc(result.length * sizeof(int));
+		if(result.figures == NULL) exit(1);
+		result.exponent = first.exponent + second.exponent - 1;
+
+		int i;
+		for(i = 0; i < myLength; i++) 
+			result.figures[i] = portion[i];
+
+		for(i = 1; i < nProcessors; i++) {
+
+			int currentProcessorLength = baseLength;
+
+			if (i == nProcessors - 1)
+				currentProcessorLength += result.length % nProcessors;
+
+			int* receivedPortion = malloc(currentProcessorLength * sizeof(int));
+			if(receivedPortion == NULL) exit(1);
+
+			MPI_Recv(receivedPortion, currentProcessorLength, MPI_INT, i, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+			int j;
+			for (j = 0; j < currentProcessorLength; j++) {
+				int position = i * baseLength + j;
+				result.figures[position] = receivedPortion[j];
+			}
+		}
+
+		result = normalize(result);
+
+		printf("Result: ");
+		for (i = 0; i < result.length; i++)
+			printf("%i", result.figures[i]);
+		printf(" E %i, L: %i\n", result.exponent, result.length);
+
+		return result;
+
+	} 
+	else {
+		MPI_Send(portion, myLength, MPI_INT, 0, 0, MPI_COMM_WORLD);
+	}
 }
 
 real tasksBagParallelMultiplication(real first, real second) {
 	real result;
 	if(verbose)
 		printf("Bag of tasks parallelism.\n");
+
 
 	return result;
 }
