@@ -8,8 +8,8 @@ int main ( int argc, char *argv[]) {
 	
 	parseOptions(argc, argv);
 
-	first = "0.98456576E+3";
-	second = "0.36981321E+3";
+	first = "0.576626662543432144232E+3";
+	second = "0.369834432432442351321E+3";
 
 	real firstReal = realFromString(first);
 	real secondReal = realFromString(second);
@@ -17,13 +17,10 @@ int main ( int argc, char *argv[]) {
 	parallelismType = 2;
 	verbose = 1;
 
-
 	if (parallelismType != 0)
 		MPI_Init( &argc, &argv );
 
-	real result = normalize(process(firstReal, secondReal));
-
-
+	process(firstReal, secondReal);
 	
 	if (parallelismType != 0)
 		MPI_Finalize();

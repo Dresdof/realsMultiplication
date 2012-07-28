@@ -64,15 +64,15 @@ void parseOptions(int argc, char *argv[]) {
 real process(real first, real second) {
 	switch(parallelismType) {
 		case 0:
-			return normalize(sequentialMultiplication(first, second));
+			sequentialMultiplication(first, second);
 			break;
 
 		case 1:
-			return normalize(dataParallelMultiplication(first, second));
+			dataParallelMultiplication(first, second);
 			break;
 
 		case 2:
-			return normalize(tasksBagParallelMultiplication(first, second));
+			tasksBagParallelMultiplication(first, second);
 			break;
 	}
 }
@@ -130,7 +130,7 @@ real realFromString(char* number) {
 	return myReal;
 }
 
-real sequentialMultiplication(real first, real second) {
+void sequentialMultiplication(real first, real second) {
 
 	real result;
 	result.length = first.length + second.length - 1;
@@ -144,11 +144,11 @@ real sequentialMultiplication(real first, real second) {
 
 	result.exponent = first.exponent + second.exponent - 1;
 
-	return result;
+	if(verbose)
+		printReal(normalize(result));
 }
 
 int coefficient(int index, real first, real second) {
-
 	int i, result = 0;
 	for (i = 0; i < first.length; i++) {
 		int j;
@@ -156,7 +156,6 @@ int coefficient(int index, real first, real second) {
 			if(i + j - 1 == index - 1) 
 				result += first.figures[i] * second.figures[j];
 	}
-
 	return result;
 }
 
@@ -246,7 +245,7 @@ real normalize(real myReal) {
 	return normalizedReal;
 }
 
-real dataParallelMultiplication(real first, real second) {
+void dataParallelMultiplication(real first, real second) {
 
 	int nProcessors, processorId;
 
@@ -303,12 +302,7 @@ real dataParallelMultiplication(real first, real second) {
 
 		result = normalize(result);
 
-		printf("Result: ");
-		for (i = 0; i < result.length; i++)
-			printf("%i", result.figures[i]);
-		printf(" E %i, L: %i\n", result.exponent, result.length);
-
-		return result;
+		if(verbose) printReal(result);
 
 	} 
 	else {
@@ -316,11 +310,127 @@ real dataParallelMultiplication(real first, real second) {
 	}
 }
 
-real tasksBagParallelMultiplication(real first, real second) {
+void tasksBagParallelMultiplication(real first, real second) {
+
+	int nProcessors, processorId;
+
+	MPI_Comm_rank (MPI_COMM_WORLD, &processorId);
+	MPI_Comm_size (MPI_COMM_WORLD, & nProcessors);
+
 	real result;
-	if(verbose)
-		printf("Bag of tasks parallelism.\n");
+	result.length = first.length + second.length - 1;
+	result.exponent = first.exponent + second.exponent - 1;
 
+	if (processorId == 0) {
 
-	return result;
+		if(verbose)
+			printf("Bag of tasks parallelism.\n");
+
+		result.figures = malloc(result.length * sizeof(int));
+		if(result.figures == NULL) exit(1);
+
+		MPI_Status status;
+
+		int lowerBound = 0;
+		int arrayX = result.length / TASK_SIZE + 1;
+
+		int** buffers = malloc (arrayX * sizeof(int*));
+		if(buffers == NULL) exit(1);
+
+		int i;
+		for(i = 0; i < arrayX; i++) {
+			buffers[i] = malloc(TASK_SIZE * sizeof(int));
+			if(buffers[i] == NULL) exit(1);
+		}
+
+		int tasksCount = 0;
+
+		MPI_Request* requests = malloc(arrayX * sizeof(MPI_Request));
+		if(requests == NULL) exit(1);
+
+		while (lowerBound < result.length )
+		{
+			int taskRequest;
+			// Receives a task request.
+			MPI_Recv(&taskRequest, 1, MPI_INT, MPI_ANY_SOURCE, TASK_TAG, MPI_COMM_WORLD, &status);
+
+			// Sends the lower bound;
+			MPI_Send(&lowerBound, 1, MPI_INT, status.MPI_SOURCE, TASK_TAG, MPI_COMM_WORLD);
+
+			MPI_Irecv(buffers[tasksCount], TASK_SIZE, MPI_INT, status.MPI_SOURCE, RESULT_TAG, MPI_COMM_WORLD, &requests[tasksCount]);
+
+			tasksCount++;
+			lowerBound += TASK_SIZE;
+		}
+
+		// Stoping nodes by sending high lowerBound to each processus.
+		for (i = 1; i < nProcessors; i++) {
+			int taskRequest = 0;
+			MPI_Status status;
+
+			MPI_Recv(&taskRequest, 1, MPI_INT, MPI_ANY_SOURCE, TASK_TAG, MPI_COMM_WORLD, &status);
+
+			// Sends the invalid lower bound;
+			MPI_Send(&result.length, 1, MPI_INT, status.MPI_SOURCE, TASK_TAG, MPI_COMM_WORLD);
+		}
+
+		MPI_Waitall(tasksCount, requests, MPI_STATUSES_IGNORE);
+
+		// Gathering data from buffers to the result.
+		for (i = 0; i < arrayX - 1; i++) {
+			int j;
+			for(j = 0; j < TASK_SIZE; j++) {
+				int index = i * TASK_SIZE + j;
+				result.figures[index] = buffers[i][j];
+			}
+		}
+		// The last buffer has a different size.
+		int lastBufferSize = result.length - TASK_SIZE * (arrayX - 1);
+		for (i = 0; i < lastBufferSize; i++) {
+			int index = (arrayX - 1) * TASK_SIZE + i;
+			result.figures[index] = buffers[arrayX - 1][i];
+		}
+
+		printReal(normalize(result));
+	}
+	else {
+
+		int lowerBound = 0;
+
+		while (lowerBound < result.length) {
+
+			// Asks for a task.
+			MPI_Send(&processorId, 1, MPI_INT, 0, TASK_TAG, MPI_COMM_WORLD);
+
+			// Receives lower bound.
+			MPI_Recv(&lowerBound, 1, MPI_INT, 0, TASK_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+			if(lowerBound == result.length) break;
+
+			// Default size of a portion.
+			int portionSize = TASK_SIZE;
+
+			// If it's the last task, we have a different size.
+			if ( lowerBound < result.length && TASK_SIZE + lowerBound > result.length)
+				portionSize = result.length - lowerBound;
+
+			int* portion = malloc (portionSize * sizeof(int));
+			if(portion == NULL) exit(1);
+
+			int i;
+			for (i = 0; i < portionSize; i++)
+				portion[i] = coefficient(i + lowerBound, first, second);
+
+			// Sends the result.
+			MPI_Send(portion, portionSize, MPI_INT, 0, RESULT_TAG, MPI_COMM_WORLD);
+		}
+	}
+}
+
+void printReal(real myReal) {
+	printf("Result: ");
+	int i;
+	for (i = 0; i < myReal.length; i++)
+		printf("%i", myReal.figures[i]);
+	printf(" E %i, L: %i\n", myReal.exponent, myReal.length);
 }

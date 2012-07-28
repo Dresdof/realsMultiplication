@@ -1,6 +1,10 @@
 #ifndef REAL_H
 #define REAL_H
 
+#define TASK_SIZE 3
+#define TASK_TAG 0
+#define RESULT_TAG 1
+
 // 0 = Sequential
 // 1 = Data parallelism
 // 2 = Tasks bag
@@ -29,10 +33,11 @@ void parseOptions(int argc, char *argv[]);
 real process(real first, real second);
 real realFromString(char* number);
 int intFromChar(char c);
-real sequentialMultiplication(real first, real second);
+void sequentialMultiplication(real first, real second);
 int coefficient(int index, real first, real second);
 real normalize(real myReal);
-real dataParallelMultiplication( real first, real second);
-real tasksBagParallelMultiplication(real first, real second);
+void dataParallelMultiplication( real first, real second);
+void tasksBagParallelMultiplication(real first, real second);
+void printReal(real myReal);
 
 #endif

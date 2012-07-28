@@ -40,7 +40,7 @@ copy: build
 	@./cp-to-blades.sh /home/$(USER)/output
 
 run: copy
-	(cd /home/$(USER); $(RUN) -np $(NP) output $(OPTS))
+	@(cd /home/$(USER); $(RUN) -np $(NP) output $(OPTS))
 
 run-sequential: build
 	./output -t 0 -f $(FIRST) -s $(SECOND)
