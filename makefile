@@ -10,9 +10,9 @@ FIRST =
 SECOND =
 
 ifeq "$(VERBOSE)" "1"
-	OPTS = -v -p $(TYPE) -f $(FIRST) -s $(SECOND)
+	OPTS = -v -p $(TYPE)
 else
-	OPTS = -p $(TYPE) -f $(FIRST) -s $(SECOND)
+	OPTS = -p $(TYPE)
 endif
 
 
@@ -43,7 +43,7 @@ run: copy
 	@(cd /home/$(USER); $(RUN) -np $(NP) output $(OPTS))
 
 run-sequential: build
-	./output -t 0 -f $(FIRST) -s $(SECOND)
+	./output -t 0
 
 run-tests: copy
 	(cd /home/$(USER); $(RUN) -np $(NP) output -t $(TESTS) $(OPTS))

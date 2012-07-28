@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <time.h>
 #include "real.h"
 
 void parseOptions(int argc, char *argv[]) {
@@ -15,10 +16,9 @@ void parseOptions(int argc, char *argv[]) {
 
 	// Set default values.
 	verbose = 0;
-	first = "0E+0";
-	second = "0E+0";
+	size = PROBLEM_SIZE;
 
-	while ((c = getopt (argc, argv, "p:t:f:s:v")) != -1) {
+	while ((c = getopt (argc, argv, "p:t:s:v")) != -1) {
 		switch (c) {
 			case 'p':
 				parallelismType = atoi(optarg);
@@ -26,19 +26,17 @@ void parseOptions(int argc, char *argv[]) {
 			case 't':
 				tests = atoi(optarg);
 				break;
-			case 'f':
-				first = optarg;
-			case 's':
-				second = optarg;
 			case 'v':
 				verbose = 1;
+				break;
+			case 's':
+				size = atoi(optarg);
 				break;
 
 			case '?':
 				if (optopt == 'p' 
 						|| optopt == 't' 
-						|| optopt == 'v' 
-						|| optopt == 'v' 
+						|| optopt == 's'
 						|| optopt == 'v')
 					printf ("Option -%c requires an argument.\n", optopt);
 				else if (isprint (optopt))
@@ -55,13 +53,68 @@ void parseOptions(int argc, char *argv[]) {
 	if (parallelismType < 0 || parallelismType > 2) 
 		parallelismType = 0;
 
-	nan.figures = malloc(sizeof(int));
-	if(nan.figures == NULL) exit(1);
-	nan.length = 1;
-	nan.exponent = -1;
 }
 
-real process(real first, real second) {
+real randomReal() {
+
+	real result;
+
+	if(parallelismType == 0 || processorId == 0) {
+		time_t seconds;
+		time(&seconds);
+		srand((unsigned int)seconds);
+
+		result.exponent = rand() % 200;
+		result.length = PROBLEM_SIZE;
+
+		result.figures = malloc(result.length * sizeof(int));
+
+		int i;
+		for(i = 0; i < result.length; i++)
+			result.figures[i] = rand() % 10;
+
+	}
+
+	// Send the number to nodes.
+	if(parallelismType != 0 && processorId == 0) {
+		
+		// The message will contain the exponent in its first cell
+		int messageSize = result.length + 1;
+		int* message = malloc( messageSize * sizeof(int));
+
+		message[0] = result.exponent;
+
+		int i;
+		for(i = 0; i < result.length; i++)
+			message[i + 1] = result.figures[i];
+
+		for(i = 1; i < nProcessors; i++)
+			MPI_Send(message, messageSize, MPI_INT, i, RANDOM_REAL_TAG, MPI_COMM_WORLD);
+	}
+	else if (parallelismType != 0 && processorId != 0) {
+		MPI_Status status;
+		int count;
+
+		MPI_Probe(0, RANDOM_REAL_TAG, MPI_COMM_WORLD, &status);
+		MPI_Get_count(&status, MPI_INT, &count);
+
+		int* message = malloc(count * sizeof(int));
+
+		MPI_Recv(message, count, MPI_INT, 0, RANDOM_REAL_TAG, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+
+		result.exponent = message[0];
+		result.length = count - 1;
+		result.figures = malloc(result.length * sizeof(int));
+
+		int i;
+		for(i = 0; i < result.length; i++)
+			result.figures[i] = message[i + 1];
+
+	}
+	return result;
+}
+
+void process(real first, real second) {
 	switch(parallelismType) {
 		case 0:
 			sequentialMultiplication(first, second);
@@ -83,7 +136,7 @@ int charToInt(char c) {
 }
 
 real realFromString(char* number) {
-	real myReal = nan;
+	real myReal;
 	int length = strlen(number);
 
 	int position = 0;
@@ -132,7 +185,6 @@ real realFromString(char* number) {
 
 void sequentialMultiplication(real first, real second) {
 
-	real result;
 	result.length = first.length + second.length - 1;
 
 	result.figures = malloc(result.length * sizeof(int));
@@ -143,9 +195,6 @@ void sequentialMultiplication(real first, real second) {
 		result.figures[i] = coefficient(i, first, second);
 
 	result.exponent = first.exponent + second.exponent - 1;
-
-	if(verbose)
-		printReal(normalize(result));
 }
 
 int coefficient(int index, real first, real second) {
@@ -160,7 +209,6 @@ int coefficient(int index, real first, real second) {
 }
 
 real normalize(real myReal) {
-	//if (myReal == nan || isNormalized(myReal)) return myReal;
 
 	real normalizedReal;
 
@@ -247,12 +295,6 @@ real normalize(real myReal) {
 
 void dataParallelMultiplication(real first, real second) {
 
-	int nProcessors, processorId;
-
-	MPI_Comm_rank (MPI_COMM_WORLD, &processorId);
-	MPI_Comm_size (MPI_COMM_WORLD, & nProcessors);
-
-	real result;
 	result.length = first.length + second.length - 1;
 	int baseLength = result.length / nProcessors;
 	int myLength = baseLength;
@@ -269,9 +311,6 @@ void dataParallelMultiplication(real first, real second) {
 	}
 
 	if (processorId == 0) {
-
-		if(verbose)
-			printf("Data parallelism.\n");
 
 		result.figures = malloc(result.length * sizeof(int));
 		if(result.figures == NULL) exit(1);
@@ -302,8 +341,6 @@ void dataParallelMultiplication(real first, real second) {
 
 		result = normalize(result);
 
-		if(verbose) printReal(result);
-
 	} 
 	else {
 		MPI_Send(portion, myLength, MPI_INT, 0, 0, MPI_COMM_WORLD);
@@ -312,19 +349,10 @@ void dataParallelMultiplication(real first, real second) {
 
 void tasksBagParallelMultiplication(real first, real second) {
 
-	int nProcessors, processorId;
-
-	MPI_Comm_rank (MPI_COMM_WORLD, &processorId);
-	MPI_Comm_size (MPI_COMM_WORLD, & nProcessors);
-
-	real result;
 	result.length = first.length + second.length - 1;
 	result.exponent = first.exponent + second.exponent - 1;
 
 	if (processorId == 0) {
-
-		if(verbose)
-			printf("Bag of tasks parallelism.\n");
 
 		result.figures = malloc(result.length * sizeof(int));
 		if(result.figures == NULL) exit(1);
