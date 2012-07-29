@@ -1,24 +1,15 @@
-
 ######################################################
 # Args to be passed through CLI
 ######################################################
 
-TYPE = 0
-TESTS = 0
-
-ifeq "$(VERBOSE)" "1"
-	OPTS = -v -p $(TYPE) -t $(TESTS)
-else
-	OPTS = -p $(TYPE) -t $(TESTS)
-endif
-
+TYPE = 1
+SIZE = 1000
+TASK = 10
+NP=14
 
 ######################################################
 # Various constants and rules
 ######################################################
-
-# Number of processors
-NP=8
 
 MPICH=/usr/local/mpich2-install/bin
 CC = $(MPICH)/mpicc
@@ -30,20 +21,23 @@ all: run
 	$(CC) -c $<
 
 build: main.c real.c
-	$(CC) main.c real.c -o output
+	@$(CC) main.c real.c -o output
 
 copy: build
 	@cp output /home/$(USER)
 	@./cp-to-blades.sh /home/$(USER)/output
 
 run: copy
-	@(cd /home/$(USER); $(RUN) -np $(NP) output $(OPTS))
+	@(cd /home/$(USER); $(RUN) -np $(NP) output -p $(TYPE) -s $(SIZE) -b $(TASK))
+
+tests: copy
+	@(cd /home/$(USER); $(RUN) -np $(NP) output -t 1 -p $(TYPE) -b $(TASK))
 
 run-sequential: build
-	./output -t 0
+	@./output -t 0 -p 0 -s $(SIZE)
 
-run-tests: copy
-	(cd /home/$(USER); $(RUN) -np $(NP) output -t $(TESTS) $(OPTS))
+tests-sequential: build
+	@./output -t 1 -p 0
 
 mpdboot:
 	@(rm -f .mpdboot*)

@@ -1,24 +1,22 @@
 #ifndef REAL_H
 #define REAL_H
 
-#define TASK_SIZE 3
+#define DEFAULT_TASK_SIZE 10
+#define DEFAULT_PROBLEM_SIZE 1000
+// Tags for MPI messages
 #define TASK_TAG 0
 #define RESULT_TAG 1
 #define RANDOM_REAL_TAG 2
-#define PROBLEM_SIZE 1000
 
 // 0 = Sequential
 // 1 = Data parallelism
 // 2 = Bag of tasks
 int parallelismType;
 
-int size;
+int problemSize;
+int taskSize;
 
-// Displays informations on CLI.
-int verbose;
-
-// Number of the test to be executed.
-// Else :  -1 = no test, 0 = all tests.
+// Bool: tests will be executed or not.
 int tests;
 
 // Values set by MPI.
@@ -38,8 +36,7 @@ void parseOptions(int argc, char *argv[]);
 real randomReal();
 void process(real first, real second);
 int equals(real first, real second);
-real realFromString(char* number);
-int intFromChar(char c);
+real stringToReal(char* number);
 void sequentialMultiplication(real first, real second);
 int coefficient(int index, real first, real second);
 real normalize(real myReal);

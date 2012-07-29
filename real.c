@@ -15,10 +15,10 @@ void parseOptions(int argc, char *argv[]) {
 	opterr = 0;
 
 	// Set default values.
-	verbose = 0;
-	size = PROBLEM_SIZE;
+	problemSize = DEFAULT_PROBLEM_SIZE;
+	taskSize = DEFAULT_TASK_SIZE;
 
-	while ((c = getopt (argc, argv, "p:t:s:v")) != -1) {
+	while ((c = getopt (argc, argv, "p:t:s:b:")) != -1) {
 		switch (c) {
 			case 'p':
 				parallelismType = atoi(optarg);
@@ -26,11 +26,11 @@ void parseOptions(int argc, char *argv[]) {
 			case 't':
 				tests = atoi(optarg);
 				break;
-			case 'v':
-				verbose = 1;
+			case 'b':
+				taskSize = atoi(optarg);
 				break;
 			case 's':
-				size = atoi(optarg);
+				problemSize = atoi(optarg);
 				break;
 
 			case '?':
@@ -65,7 +65,7 @@ real randomReal() {
 		srand((unsigned int)seconds);
 
 		result.exponent = rand() % 200;
-		result.length = PROBLEM_SIZE;
+		result.length = problemSize;
 
 		result.figures = malloc(result.length * sizeof(int));
 
@@ -151,7 +151,7 @@ int equals(real first, real second) {
 	return 1;
 }
 
-real realFromString(char* number) {
+real stringToReal(char* number) {
 	real myReal;
 	int length = strlen(number);
 
@@ -376,14 +376,14 @@ void tasksBagParallelMultiplication(real first, real second) {
 		MPI_Status status;
 
 		int lowerBound = 0;
-		int arrayX = result.length / TASK_SIZE + 1;
+		int arrayX = result.length / taskSize + 1;
 
 		int** buffers = malloc (arrayX * sizeof(int*));
 		if(buffers == NULL) exit(1);
 
 		int i;
 		for(i = 0; i < arrayX; i++) {
-			buffers[i] = malloc(TASK_SIZE * sizeof(int));
+			buffers[i] = malloc(taskSize * sizeof(int));
 			if(buffers[i] == NULL) exit(1);
 		}
 
@@ -401,10 +401,10 @@ void tasksBagParallelMultiplication(real first, real second) {
 			// Sends the lower bound;
 			MPI_Send(&lowerBound, 1, MPI_INT, status.MPI_SOURCE, TASK_TAG, MPI_COMM_WORLD);
 
-			MPI_Irecv(buffers[tasksCount], TASK_SIZE, MPI_INT, status.MPI_SOURCE, RESULT_TAG, MPI_COMM_WORLD, &requests[tasksCount]);
+			MPI_Irecv(buffers[tasksCount], taskSize, MPI_INT, status.MPI_SOURCE, RESULT_TAG, MPI_COMM_WORLD, &requests[tasksCount]);
 
 			tasksCount++;
-			lowerBound += TASK_SIZE;
+			lowerBound += taskSize;
 		}
 
 		// Stoping nodes by sending high lowerBound to each processus.
@@ -423,15 +423,15 @@ void tasksBagParallelMultiplication(real first, real second) {
 		// Gathering data from buffers to the result.
 		for (i = 0; i < arrayX - 1; i++) {
 			int j;
-			for(j = 0; j < TASK_SIZE; j++) {
-				int index = i * TASK_SIZE + j;
+			for(j = 0; j < taskSize; j++) {
+				int index = i * taskSize + j;
 				result.figures[index] = buffers[i][j];
 			}
 		}
 		// The last buffer has a different size.
-		int lastBufferSize = result.length - TASK_SIZE * (arrayX - 1);
+		int lastBufferSize = result.length - taskSize * (arrayX - 1);
 		for (i = 0; i < lastBufferSize; i++) {
-			int index = (arrayX - 1) * TASK_SIZE + i;
+			int index = (arrayX - 1) * taskSize + i;
 			result.figures[index] = buffers[arrayX - 1][i];
 		}
 	}
@@ -450,10 +450,10 @@ void tasksBagParallelMultiplication(real first, real second) {
 			if(lowerBound == result.length) break;
 
 			// Default size of a portion.
-			int portionSize = TASK_SIZE;
+			int portionSize = taskSize;
 
 			// If it's the last task, we have a different size.
-			if ( lowerBound < result.length && TASK_SIZE + lowerBound > result.length)
+			if ( lowerBound < result.length && taskSize + lowerBound > result.length)
 				portionSize = result.length - lowerBound;
 
 			int* portion = malloc (portionSize * sizeof(int));
@@ -498,11 +498,11 @@ char* realToString(real myReal) {
 
 void runTest(real first, real second, real expected) {
 
-		process(first, second);
+	process(first, second);
 
-		if (parallelismType == 0 || (parallelismType != 0 && processorId == 0) ) {
-			result = normalize(result);
-			assert(equals(result, expected));
-			printf("-- %s * %s || Expected: %s, result: %s || Assertion OK.\n", realToString(first), realToString(second), realToString(expected), realToString(result));
-		}
+	if (parallelismType == 0 || (parallelismType != 0 && processorId == 0) ) {
+		result = normalize(result);
+		assert(equals(result, expected));
+		printf("-- %s * %s || Expected: %s, result: %s || Assertion OK.\n", realToString(first), realToString(second), realToString(expected), realToString(result));
+	}
 }
