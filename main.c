@@ -9,7 +9,6 @@ int main ( int argc, char *argv[]) {
 	
 	parseOptions(argc, argv);
 
-	parallelismType = 2;
 	verbose = 1;
 
 	if (parallelismType != 0) {
@@ -39,16 +38,26 @@ int main ( int argc, char *argv[]) {
 		real secondReal = randomReal();
 
 		process(firstReal, secondReal);
-	
 	}
 	else {
 		if(processorId == 0) printf("Tests execution: \n");
-		// First test
+		// Test 1
 		real first = realFromString("0.1337E+4");
 		real second = realFromString("0.2443E+5");
 		real expected = realFromString("0.3266291E+8");
 		runTest(first, second, expected);
 
+		// Test 2
+		first = realFromString("0.35154586548E+7");
+		second = realFromString("0.244314231E+9");
+		expected = realFromString("0.8588765778597564588E+15");
+		runTest(first, second, expected);
+
+		// Test 3
+		first = realFromString("0.6546543E+7");
+		second = realFromString("0.78778234E-9");
+		expected = realFromString("0.515725096345062E-2");
+		runTest(first, second, expected);
 	}
 
 	if (parallelismType != 0) {

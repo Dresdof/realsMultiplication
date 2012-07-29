@@ -503,6 +503,6 @@ void runTest(real first, real second, real expected) {
 		if (parallelismType == 0 || (parallelismType != 0 && processorId == 0) ) {
 			result = normalize(result);
 			assert(equals(result, expected));
-			printf("-- %s * %s == %s - Assertion OK.\n", realToString(first), realToString(second), realToString(expected));
+			printf("-- %s * %s || Expected: %s, result: %s || Assertion OK.\n", realToString(first), realToString(second), realToString(expected), realToString(result));
 		}
 }
