@@ -1,4 +1,5 @@
 #include <mpi.h>
+#include <time.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,6 +11,8 @@ int main ( int argc, char *argv[]) {
 	parseOptions(argc, argv);
 
 	verbose = 1;
+	double mpi_time;
+	clock_t clock_time;
 
 	if (parallelismType != 0) {
 		MPI_Init( &argc, &argv );
@@ -37,7 +40,17 @@ int main ( int argc, char *argv[]) {
 		real firstReal = randomReal();
 		real secondReal = randomReal();
 
+		if(parallelismType != 0)
+			mpi_time = -MPI_Wtime();
+		else
+			clock_time = -clock();
+
 		process(firstReal, secondReal);
+
+		if(parallelismType != 0)
+			mpi_time += MPI_Wtime();
+		else
+			clock_time += clock();
 	}
 	else {
 		if(processorId == 0) printf("Tests execution: \n");
@@ -60,18 +73,17 @@ int main ( int argc, char *argv[]) {
 		runTest(first, second, expected);
 	}
 
-	if (parallelismType != 0) {
-		MPI_Finalize();
-		if(processorId == 0 && verbose) {
-			result = normalize(result);
-			realToString(result);
-		}
-	}
-	else {
-		result = normalize(result);
-		if(verbose)
-			realToString(result);
-	}
+	float time;
 
+	if (parallelismType != 0) {
+		time = mpi_time;
+		MPI_Finalize();
+	}
+	else time = (float)clock_time / (float)CLOCKS_PER_SEC;
+	
+	if(processorId == 0 || parallelismType == 0) {
+		printf("Execution finished.\n Time for a problem of size %i: %1.3fs.\n", PROBLEM_SIZE, time);
+		result = normalize(result);
+	}
   return 0;
 }

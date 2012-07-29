@@ -4,10 +4,7 @@
 ######################################################
 
 TYPE = 0
-VERBOSE = 1
 TESTS = 0
-FIRST = 
-SECOND =
 
 ifeq "$(VERBOSE)" "1"
 	OPTS = -v -p $(TYPE) -t $(TESTS)
