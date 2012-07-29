@@ -135,6 +135,22 @@ int charToInt(char c) {
 	return atoi(&c);
 }
 
+int equals(real first, real second) {
+	if (first.figures == NULL || second.figures == NULL)
+		return 0;
+
+	if (first.length != second.length 
+			|| first.exponent != second.exponent)
+		return 0;
+
+	int i;
+	for(i = 0; i < first.length; i++)
+		if(first.figures[i] != second.figures[i])
+				return 0;
+
+	return 1;
+}
+
 real realFromString(char* number) {
 	real myReal;
 	int length = strlen(number);
@@ -418,8 +434,6 @@ void tasksBagParallelMultiplication(real first, real second) {
 			int index = (arrayX - 1) * TASK_SIZE + i;
 			result.figures[index] = buffers[arrayX - 1][i];
 		}
-
-		printReal(normalize(result));
 	}
 	else {
 
@@ -455,10 +469,40 @@ void tasksBagParallelMultiplication(real first, real second) {
 	}
 }
 
-void printReal(real myReal) {
-	printf("Result: ");
+char* realToString(real myReal) {
+
+	char* result = malloc ( (myReal.length + 14) * sizeof(char));
+	char* buffer = malloc (11 * sizeof(char));
+	if(result == NULL || buffer == NULL) exit(1);
+
+	// Empty the string. 
+	// (Some characters appeared in the result, didn't understand why)
+	sprintf(result, "");
+
+	strcat(result, "0.");
+
 	int i;
-	for (i = 0; i < myReal.length; i++)
-		printf("%i", myReal.figures[i]);
-	printf(" E %i, L: %i\n", myReal.exponent, myReal.length);
+	for (i = 0; i < myReal.length; i++) {
+		sprintf(buffer, "%i", myReal.figures[i]);
+		strcat(result, buffer);
+	}
+
+	strcat(result, "E");
+	if(myReal.exponent > 0) strcat(result, "+");
+
+	sprintf(buffer, "%i", myReal.exponent);
+	strcat(result, buffer);
+
+	return result;
+}
+
+void runTest(real first, real second, real expected) {
+
+		process(first, second);
+
+		if (parallelismType == 0 || (parallelismType != 0 && processorId == 0) ) {
+			result = normalize(result);
+			assert(equals(result, expected));
+			printf("-- %s * %s == %s - Assertion OK.\n", realToString(first), realToString(second), realToString(expected));
+		}
 }

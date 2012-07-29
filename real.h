@@ -37,6 +37,7 @@ real result;
 void parseOptions(int argc, char *argv[]);
 real randomReal();
 void process(real first, real second);
+int equals(real first, real second);
 real realFromString(char* number);
 int intFromChar(char c);
 void sequentialMultiplication(real first, real second);
@@ -44,6 +45,6 @@ int coefficient(int index, real first, real second);
 real normalize(real myReal);
 void dataParallelMultiplication( real first, real second);
 void tasksBagParallelMultiplication(real first, real second);
-void printReal(real myReal);
+char* realToString(real myReal);
 
 #endif

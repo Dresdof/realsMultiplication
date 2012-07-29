@@ -10,9 +10,9 @@ FIRST =
 SECOND =
 
 ifeq "$(VERBOSE)" "1"
-	OPTS = -v -p $(TYPE)
+	OPTS = -v -p $(TYPE) -t $(TESTS)
 else
-	OPTS = -p $(TYPE)
+	OPTS = -p $(TYPE) -t $(TESTS)
 endif
 
 
